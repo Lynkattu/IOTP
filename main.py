@@ -81,9 +81,9 @@ def keyPad():
                     lcd.clear()
                 elif userinput == "=":
                     if INPUTCODE == PASSWORD:
-                        lcdMessage("Door open",3)
+                        lcdMessage("Door open")
                     else:
-                        lcdMessage("Try again",1)
+                        lcdMessage("Try again")
                     INPUTCODE = ""
                     getPassword()
                     lcd.clear()
@@ -100,12 +100,11 @@ def keyPad():
         if scanKeypad(memoryRow,memoryCol) == KEY_UP:
             isReleased = True
    
-def lcdMessage(msg, duration):
+def lcdMessage(msg):
     pos = int(8-(len(msg)/2))
     lcd.clear()
     lcd.move_to(pos,0)
     lcd.putstr(msg)
-    sleep(duration)
 
 def lcdOutput():
     lcd.move_to(0,0)
