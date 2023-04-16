@@ -2,10 +2,28 @@ from machine import Pin, I2C
 from lcd_api import LcdApi
 from pico_i2c_lcd import I2cLcd
 from time import sleep
+from wifiesp import ESP
 
+#-----------------------------wifi-init--------------------------------------
+debug = True
+device_id = 8266 # Device ID
+poll_rate = 30 # Polling cloud with new data
+# See "private" area from https://standards-oui.ieee.org/oui/oui.txt
+mac = "00:00:6C:00:00:01" # ESP MAC
+hostname = "beginner" # ESP hostname
+target = "dinosaurus.switzerlandnorth.cloudapp.azure.com" # IP or FQDN of the backend (in the cloud)
+ssid="Wokwi-GUEST" # WiFi network name
+password = "" # WiFi password
+
+wifi_conn = ESP(uart=0, baud=115200, txPin=0, rxPin=1, debug=debug)
+wifi_conn.setMAC(mac) # set the ESP mac
+wifi_conn.setHostname(hostname) # set the ESP hostname
+wifi_conn.connectAP(ssid=ssid, pwd=password)
+
+#-----------------------------keypad-input--system-password--------------------
 INPUTCODE = ""
 PASSWORD = "1234"
-#------------------------------LCD-Init----------------------------------------
+#------------------------------LCD-Init---------------------------------------- dinosaurus.switzerlandnorth.cloudapp.azure.com 
 SCLPIN = Pin(9, Pin.OUT)
 SDAPIN = Pin(8, Pin.OUT)
 
@@ -20,8 +38,8 @@ lcd = I2cLcd(i2c, I2C_ADD, I2C_ROWS, I2C_COLUMNS)
 ROWS = 4
 COLUMNS = 3
 #-------Keypad row and column key pins-----------
-ROWPINS = [Pin(0, Pin.OUT), Pin(1, Pin.OUT), Pin(2, Pin.OUT), Pin(3, Pin.OUT)]
-COLUMNPINS = [Pin(4, Pin.IN, Pin.PULL_DOWN), Pin(5, Pin.IN, Pin.PULL_DOWN), Pin(6, Pin.IN, Pin.PULL_DOWN), Pin(7, Pin.IN, Pin.PULL_DOWN)]
+ROWPINS = [Pin(16, Pin.OUT), Pin(17, Pin.OUT), Pin(18, Pin.OUT), Pin(19, Pin.OUT)]
+COLUMNPINS = [Pin(20, Pin.IN, Pin.PULL_DOWN), Pin(21, Pin.IN, Pin.PULL_DOWN), Pin(22, Pin.IN, Pin.PULL_DOWN)]
 #-------------------------------------------------
 KEY_UP = 0
 KEY_DOWN = 1
@@ -49,12 +67,6 @@ def scanKeypad(row,col):
    ROWPINS[row].off()
    return keyValue
 
-#Initialize program
-def init():
-   #set all row pins to 0
-   for p in range(ROWS):
-      ROWPINS[p].off()
-
 def keyPad():
     global INPUTCODE
     userinput = ""
@@ -69,11 +81,12 @@ def keyPad():
                     lcd.clear()
                 elif userinput == "=":
                     if INPUTCODE == PASSWORD:
-                        print("Welcome")
-                        INPUTCODE = ""
-                        lcd.clear()
+                        lcdMessage("Door open",3)
                     else:
-                        print("Invalid password")
+                        lcdMessage("Try again",1)
+                    INPUTCODE = ""
+                    getPassword()
+                    lcd.clear()
                 else:
                     INPUTCODE += userinput
 
@@ -87,15 +100,40 @@ def keyPad():
         if scanKeypad(memoryRow,memoryCol) == KEY_UP:
             isReleased = True
    
+def lcdMessage(msg, duration):
+    pos = int(8-(len(msg)/2))
+    lcd.clear()
+    lcd.move_to(pos,0)
+    lcd.putstr(msg)
+    sleep(duration)
+
 def lcdOutput():
     lcd.move_to(0,0)
     lcd.putstr(INPUTCODE)
 
-init()
+def decodePin(recv):
+    pin = ""
+    for i in reversed(range(len(recv))):
+        if recv[i] == ",":
+            break
+        if recv[i] >= "0" and recv[i] <= "9":
+            pin = ''.join((recv[i],pin))
+    return pin
 
-while True:
-    keyPad()
-    lcdOutput()
-   
-   
+def getPassword():
+    global PASSWORD
+    pin = str(wifi_conn.httpGET(host=target, path=":3000/current-pin"))
+    PASSWORD = decodePin(str(pin))
+    print("password: " + PASSWORD)
 
+def main():
+    #--initialize program--
+    getPassword()
+    for p in range(ROWS):
+        ROWPINS[p].off()
+    #----------------------
+    while True:
+        keyPad()
+        lcdOutput()
+
+main()
