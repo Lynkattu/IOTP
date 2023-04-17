@@ -11,7 +11,7 @@ poll_rate = 30 # Polling cloud with new data
 # See "private" area from https://standards-oui.ieee.org/oui/oui.txt
 mac = "00:00:6C:00:00:01" # ESP MAC
 hostname = "beginner" # ESP hostname
-target = "dinosaurus.switzerlandnorth.cloudapp.azure.com" # IP or FQDN of the backend (in the cloud)
+target = "pipico.centralindia.cloudapp.azure.com" # IP or FQDN of the backend (in the cloud)
 ssid="Wokwi-GUEST" # WiFi network name
 password = "" # WiFi password
 
@@ -23,6 +23,7 @@ wifi_conn.connectAP(ssid=ssid, pwd=password)
 #-----------------------------keypad-input--system-password--------------------
 INPUTCODE = ""
 PASSWORD = "1234"
+ISMESSAGECHANGED = True
 #------------------------------LCD-Init---------------------------------------- dinosaurus.switzerlandnorth.cloudapp.azure.com 
 SCLPIN = Pin(9, Pin.OUT)
 SDAPIN = Pin(8, Pin.OUT)
@@ -69,8 +70,10 @@ def scanKeypad(row,col):
 
 def keyPad():
     global INPUTCODE
+    global ISMESSAGECHANGED
     userinput = ""
     isReleased = True
+    isInputChanged = False
 
     for row in range(ROWS):
         for col in range(COLUMNS):
@@ -79,7 +82,10 @@ def keyPad():
                 if userinput == "<":
                     INPUTCODE = INPUTCODE[:-1]
                     lcd.clear()
+                    ISMESSAGECHANGED = True
                 elif userinput == "=":
+                    lcd.clear()
+                    ISMESSAGECHANGED = True
                     if INPUTCODE == PASSWORD:
                         lcdMessage("Door open")
                     else:
@@ -89,26 +95,35 @@ def keyPad():
                     lcd.clear()
                 else:
                     INPUTCODE += userinput
+                    ISMESSAGECHANGED = False
 
                 print("Last input: " + userinput)
                 print("Input Code: " + INPUTCODE)
                 isReleased = False
                 memoryCol = col
                 memoryRow = row
+                isInputChanged = True
     #Check when key is released
     while isReleased == False:
         if scanKeypad(memoryRow,memoryCol) == KEY_UP:
             isReleased = True
+    return isInputChanged
    
-def lcdMessage(msg):
-    pos = int(8-(len(msg)/2))
-    lcd.clear()
-    lcd.move_to(pos,0)
-    lcd.putstr(msg)
+def lcdMessage(msg0,msg1=""):
+    pos = int(8-(len(msg0)/2))
+    if ISMESSAGECHANGED:
+        lcd.move_to(pos,0)
+        lcd.putstr(msg0)
+    if msg1 != "":
+        pos = int(8-(len(msg1)/2))
+        lcd.move_to(pos,1)
+        lcd.putstr(msg1)
 
 def lcdOutput():
-    lcd.move_to(0,0)
-    lcd.putstr(INPUTCODE)
+    lcd.move_to(1,0)
+    lcd.putstr("Insert pincode")
+    lcd.move_to(0,1)
+    lcd.putstr("*"*len(INPUTCODE))
 
 def decodePin(recv):
     pin = ""
@@ -128,11 +143,14 @@ def getPassword():
 def main():
     #--initialize program--
     getPassword()
+    lcdOutput()
     for p in range(ROWS):
         ROWPINS[p].off()
     #----------------------
     while True:
-        keyPad()
-        lcdOutput()
+        if keyPad():
+            lcdMessage("Insert Pincode", ("*"*len(INPUTCODE)))
+            #lcdOutput()
+        
 
 main()
