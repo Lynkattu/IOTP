@@ -119,12 +119,6 @@ def lcdMessage(msg0,msg1=""):
         lcd.move_to(pos,1)
         lcd.putstr(msg1)
 
-def lcdOutput():
-    lcd.move_to(1,0)
-    lcd.putstr("Insert pincode")
-    lcd.move_to(0,1)
-    lcd.putstr("*"*len(INPUTCODE))
-
 def decodePin(recv):
     pin = ""
     for i in reversed(range(len(recv))):
@@ -143,14 +137,12 @@ def getPassword():
 def main():
     #--initialize program--
     getPassword()
-    lcdOutput()
+    lcdMessage("Insert Pincode", ("*"*len(INPUTCODE)))
     for p in range(ROWS):
         ROWPINS[p].off()
     #----------------------
     while True:
         if keyPad():
             lcdMessage("Insert Pincode", ("*"*len(INPUTCODE)))
-            #lcdOutput()
-        
-
+            
 main()
